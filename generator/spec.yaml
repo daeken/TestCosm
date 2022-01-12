@@ -1,0 +1,89 @@
+---
+- interface:
+    name: hypercosm.object.v1.0.0
+    methods:
+      - listInterfaces:
+        - array[string]
+      - release
+
+- interface:
+    name: hypercosm.root.v0.1.0
+    methods:
+      - listExtensions:
+        - array[string]
+      - ping
+      - getObjectById:
+        - object
+        - uuid: id
+      - getObjectByName:
+        - object
+        - string: name
+
+- extension:
+  - name: hypercosm.assetdelivery.v0.1.0
+  - interface: # Implicit name; matches extension and visible from root object
+      events: # Events can come after methods in the YAML but always first for command numbering
+        - loadAssets:
+          - void
+          - array[asset]: asset
+        - unloadAssets:
+          - void
+          - array[uuid]: ids
+      methods:
+        - fetchAssetById:
+          - asset
+          - uuid: id
+        - fetchAssetByName:
+          - asset
+          - string: name
+        - fetchAssetsByIds:
+          - array[asset]
+          - array[uuid]: ids
+        - fetchAssetsByNames:
+          - array[asset]
+          - array[string]: names
+        - getId:
+          - uuid
+          - string: name
+  - struct:
+    - name: asset # First element of a struct is always the name
+    - uuid: id
+    - string: name
+    - array[u8]: data
+
+- extension:
+  - name: hypercosm.world.v0.1.0
+  - interface:
+      events:
+        - addEntities:
+          - void
+          - array[entityInfo]: entities
+        - updateEntities:
+          - void
+          - array[entityInfo]: entities
+        - removeEntities:
+          - void
+          - array[entity]: entities
+  - struct:
+    - name: entityInfo
+    - uuid: assetId # glTF
+    - entity: entity
+    - matrix4x4: transformation
+    - entityFlags: flags
+  - interface:
+      name: entity
+      methods:
+        - interact
+  - flags:
+    - name: entityFlags
+    - type: vu128
+    - None: 0
+    - Interactable
+    - Collidable
+
+  - enum: # Alternate form
+    - name: entityFlags
+    - type: vu128
+    - None: 0
+    - Interactable: 1
+    - Collidable: 2

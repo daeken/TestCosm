@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestCosm", "TestCosm\TestCosm.csproj", "{BCEB036C-2CA3-497D-B5FE-378A901D7884}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetLib", "NetLib\NetLib.csproj", "{79344763-E346-4BD3-9C7B-798B4146ED82}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CliClient", "CliClient\CliClient.csproj", "{59F183B2-179A-4A7F-BA4F-0146A432A963}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BCEB036C-2CA3-497D-B5FE-378A901D7884}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCEB036C-2CA3-497D-B5FE-378A901D7884}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCEB036C-2CA3-497D-B5FE-378A901D7884}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCEB036C-2CA3-497D-B5FE-378A901D7884}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79344763-E346-4BD3-9C7B-798B4146ED82}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79344763-E346-4BD3-9C7B-798B4146ED82}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79344763-E346-4BD3-9C7B-798B4146ED82}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79344763-E346-4BD3-9C7B-798B4146ED82}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59F183B2-179A-4A7F-BA4F-0146A432A963}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59F183B2-179A-4A7F-BA4F-0146A432A963}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59F183B2-179A-4A7F-BA4F-0146A432A963}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59F183B2-179A-4A7F-BA4F-0146A432A963}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
