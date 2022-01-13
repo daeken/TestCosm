@@ -63,14 +63,14 @@ public static partial class NetExtensions {
 	}
 
 	public static void SerializeVu64(ulong val, Span<byte> buf, ref int offset) {
-		while(val > 0) {
+		do {
 			if(offset >= buf.Length) throw new SerializationException();
 			var bval = val & 0x7F;
 			val >>= 7;
 			if(val > 0)
 				bval |= 0x80;
 			buf[offset++] = (byte) bval;
-		}
+		} while(val != 0);
 	}
 	public static ulong DeserializeVu64(Span<byte> buf, ref int offset) {
 		var val = 0UL;

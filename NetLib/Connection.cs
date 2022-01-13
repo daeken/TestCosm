@@ -62,15 +62,22 @@ public class Connection : IConnection {
 					await Task.Factory.StartNew(async () => {
 						try {
 							await obj.HandleMessage(sequence, commandNum, buf, offset);
+						} catch(CommandException ce) {
+							await Error(sequence, ce.Error);
 						} catch(Exception e) {
-							Console.WriteLine($"Exceptiong in handling command {commandNum} to object {id} ({obj}): {e}");
+							Console.WriteLine($"Exception in handling command {commandNum} to object {id} ({obj}): {e}");
 						}
 					});
 			} else { // Response
-				Console.WriteLine("Got a response with sequence {sequence}");
+				Console.WriteLine($"Got a response with sequence {sequence}");
 				if(ResponseWaiters.TryRemove(sequence, out var waiter)) {
-					Console.WriteLine($"Sending buffer to waiting call...");
-					waiter.SetResult(buf.AsMemory()[offset..]);
+					if(commandNum == 0) {
+						Console.WriteLine("Sending buffer to waiting call...");
+						waiter.SetResult(buf.AsMemory()[offset..]);
+					} else {
+						Console.WriteLine("Sending error back to waiting call");
+						waiter.SetException(new CommandException(commandNum));
+					}
 				} else
 					Console.WriteLine("Response for unknown sequence!");
 			}
@@ -104,7 +111,7 @@ public class Connection : IConnection {
 			}
 		});
 		var looptask = await Task.Factory.StartNew(Loop);
-		await Task.WhenAll(hstask, looptask);
+		await Task.WhenAny(hstask, looptask);
 	}
 
 	public async Task<Memory<byte>> Call(ulong objectId, uint commandNumber, Memory<byte> buf) {
@@ -147,8 +154,11 @@ public class Connection : IConnection {
 		return LocalObjectI++;
 	}
 	public T GetObject<T>(ulong id, Func<ulong, T> generator) {
-		throw new NotImplementedException();
+		if(RemoteObjects.TryGetValue(id, out var obj) && obj is T tobj)
+			return tobj;
+		return (T) (RemoteObjects[id] = (IRemoteObject) generator(id));
 	}
+
 	public T GetCallback<T>(ulong id, Func<ulong, T> generator) {
 		throw new NotImplementedException();
 	}
