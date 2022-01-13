@@ -85,11 +85,11 @@ public static partial class NetExtensions {
 		return val;
 	}
 	public static int SizeVu64(ulong val) {
-		var count = 1;
-		while(val > 0) {
+		var count = 0;
+		do {
 			count++;
 			val >>= 7;
-		}
+		} while(val > 0);
 		return count;
 	}
 
@@ -111,6 +111,7 @@ public static partial class NetExtensions {
 		SerializeVu64((ulong) bytes.Length, buf, ref offset);
 		if(offset + bytes.Length > buf.Length) throw new SerializationException();
 		bytes.CopyTo(buf[offset..(offset + bytes.Length)]);
+		offset += bytes.Length;
 	}
 	public static string DeserializeString(Span<byte> buf, ref int offset) {
 		var len = (int) DeserializeVu64(buf, ref offset);
@@ -168,4 +169,13 @@ public static partial class NetExtensions {
 			DeserializeF32(buf, ref offset)
 		);
 	public static int SizeMatrix4x4(Matrix4x4 _) => 4 * 4 * 4;
+
+	public static async Task ReadAllAsync(this Stream stream, Memory<byte> buf) {
+		while(buf.Length != 0) {
+			var count = await stream.ReadAsync(buf);
+			if(count == 0) throw new DisconnectedException();
+			if(count == buf.Length) break;
+			buf = buf[count..];
+		}
+	}
 }

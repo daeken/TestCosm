@@ -8,3 +8,6 @@ public class UnknownObjectException : Exception {
 
 public class SerializationException : Exception {
 }
+
+public class DisconnectedException : Exception {
+}

@@ -30,7 +30,7 @@ public class Server {
 			await stream.AuthenticateAsServerAsync(new X509Certificate2("cert.pfx", "testing"), false, SslProtocols.Tls13 | SslProtocols.Tls12, false);
 			Console.WriteLine("TLS set up");
 			Memory<byte> skb = new byte[16];
-			await stream.ReadAsync(skb);
+			await stream.ReadAllAsync(skb);
 			var sessionKey = new Uuid(skb.Span);
 			if(Clients.TryGetValue(sessionKey, out var cl)) {
 				await stream.WriteAsync(skb);
