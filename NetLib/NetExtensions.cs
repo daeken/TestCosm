@@ -14,6 +14,19 @@ public static partial class NetExtensions {
 	}
 	public static int SizeU8(byte _) => 1;
 
+	public static void SerializeU64(ulong val, Span<byte> buf, ref int offset) {
+		if(offset + 8 > buf.Length) throw new SerializationException();
+		BitConverter.GetBytes(val).CopyTo(buf[offset..]);
+		offset += 8;
+	}
+	public static ulong DeserializeU64(Span<byte> buf, ref int offset) {
+		if(offset + 8 > buf.Length) throw new SerializationException();
+		var val = BitConverter.ToUInt64(buf[offset..(offset+8)]);
+		offset += 8;
+		return val;
+	}
+	public static int SizeU64(byte _) => 8;
+
 	public static void SerializeVi32(int val, Span<byte> buf, ref int offset) {
 		var more = true;
 		while(more) {

@@ -258,12 +258,12 @@ with file('../NetLib/Generated/Protocol.cs', 'w') as fp:
 				if len(params) > 1 or params[0] != ['void']:
 					print >>fp, ws + '\t\tvar offset = 0;'
 				if len(params) == 1:
-					print >>fp, ws + '\t\t%sawait Connection.Call(_id, %i, Memory<byte>.Empty);' % ('var buf = ' if params[0] != ['void'] else '', cmdNum)
+					print >>fp, ws + '\t\t%sawait Connection.Call(_id, 2, Memory<byte>.Empty);' % ('var buf = ' if params[0] != ['void'] else '')
 				else:
 					print >>fp, ws + '\t\tMemory<byte> buf = new byte[%s];' % ' + '.join(genMsgSize(type, '_p%i' % i) for i, type in enumerate(params[1:]))
 					for i, type in enumerate(params[1:]):
 						genMsgSerialize(type, '_p%i' % i, 4)
-					print >>fp, ws + '\t\t%sawait Connection.Call(_id, %i, buf);' % ('buf = ' if params[0] != ['void'] else '', cmdNum)
+					print >>fp, ws + '\t\t%sawait Connection.Call(_id, 2, buf);' % ('buf = ' if params[0] != ['void'] else '')
 					print >>fp, ws + '\t\toffset = 0;'
 				if params[0] != ['void']:
 					genMsgDeserialize(params[0], 'ret', depth + 1, depthOffset)
@@ -312,6 +312,8 @@ with file('../NetLib/Generated/Protocol.cs', 'w') as fp:
 				print >>fp, ws + 'NetExtensions.SerializeVu64(Connection.GetCallbackId(%s, () =>' % value
 				print >>fp, ws + '\tasync (sequence, buf) => {'
 				params = type[1:]
+				if len(params) > 1 or params[0] != ['void']:
+					print >>fp, ws + '\t\tvar offset = 0;'
 				for i, type in enumerate(params[1:]):
 					genMsgDeserialize(type, '_p%i' % i, depthOffset=2)
 				if params[0] == ['void']:

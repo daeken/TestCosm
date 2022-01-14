@@ -16,6 +16,7 @@ public class Server {
 	}
 
 	public void Run() {
+		ServerAssetDelivery.EnsureLoaded();
 		while(true) {
 			Console.WriteLine("Waiting for connection...");
 			var client = Listener.AcceptTcpClient();

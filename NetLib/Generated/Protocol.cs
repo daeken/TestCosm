@@ -226,7 +226,7 @@ public abstract class BaseAssetdelivery : BaseObject, Assetdelivery {
 						foreach(var _4 in _p0) {
 							_4.Serialize(Connection, buf.Span, ref offset);
 						}
-						await Connection.Call(_id, 3, buf);
+						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
@@ -245,7 +245,7 @@ public abstract class BaseAssetdelivery : BaseObject, Assetdelivery {
 						foreach(var _4 in _p0) {
 							_4.Serialize(buf.Span, ref offset);
 						}
-						await Connection.Call(_id, 4, buf);
+						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
@@ -264,7 +264,7 @@ public abstract class BaseAssetdelivery : BaseObject, Assetdelivery {
 						foreach(var _4 in _p0) {
 							_4.Serialize(buf.Span, ref offset);
 						}
-						await Connection.Call(_id, 5, buf);
+						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
@@ -353,6 +353,7 @@ public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64(Connection.GetCallbackId(callback))];
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
+				var offset = 0;
 				var _p0 = new Asset[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
 				for(var i0 = 0; i0 < _p0.Length; ++i0) {
 					_p0[i0] = Asset.Deserialize(Connection, buf.Span, ref offset);
@@ -371,6 +372,7 @@ public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64(Connection.GetCallbackId(callback))];
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
+				var offset = 0;
 				var _p0 = new Asset[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
 				for(var i0 = 0; i0 < _p0.Length; ++i0) {
 					_p0[i0] = Asset.Deserialize(Connection, buf.Span, ref offset);
@@ -389,6 +391,7 @@ public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64(Connection.GetCallbackId(callback))];
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
+				var offset = 0;
 				var _p0 = new Uuid[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
 				for(var i0 = 0; i0 < _p0.Length; ++i0) {
 					_p0[i0] = Uuid.Deserialize(buf.Span, ref offset);
@@ -407,6 +410,7 @@ public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64(Connection.GetCallbackId(callback))];
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
+				var offset = 0;
 				var _p0 = new Uuid[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
 				for(var i0 = 0; i0 < _p0.Length; ++i0) {
 					_p0[i0] = Uuid.Deserialize(buf.Span, ref offset);
@@ -553,7 +557,7 @@ public abstract class BaseWorld : BaseObject, World {
 						foreach(var _4 in _p0) {
 							_4.Serialize(Connection, buf.Span, ref offset);
 						}
-						await Connection.Call(_id, 3, buf);
+						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
@@ -572,7 +576,7 @@ public abstract class BaseWorld : BaseObject, World {
 						foreach(var _4 in _p0) {
 							_4.Serialize(Connection, buf.Span, ref offset);
 						}
-						await Connection.Call(_id, 4, buf);
+						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
@@ -591,7 +595,7 @@ public abstract class BaseWorld : BaseObject, World {
 						foreach(var _4 in _p0) {
 							_4.Serialize(Connection, buf.Span, ref offset);
 						}
-						await Connection.Call(_id, 5, buf);
+						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
@@ -610,7 +614,7 @@ public abstract class BaseWorld : BaseObject, World {
 						foreach(var _4 in _p0) {
 							NetExtensions.SerializeVu64(_4.ObjectId, buf.Span, ref offset);
 						}
-						await Connection.Call(_id, 6, buf);
+						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
@@ -629,7 +633,7 @@ public abstract class BaseWorld : BaseObject, World {
 						foreach(var _4 in _p0) {
 							NetExtensions.SerializeVu64(_4.ObjectId, buf.Span, ref offset);
 						}
-						await Connection.Call(_id, 7, buf);
+						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
@@ -651,6 +655,7 @@ public class RemoteWorld : RemoteObject, World {
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64(Connection.GetCallbackId(callback))];
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
+				var offset = 0;
 				var _p0 = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
 				for(var i0 = 0; i0 < _p0.Length; ++i0) {
 					_p0[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
@@ -669,6 +674,7 @@ public class RemoteWorld : RemoteObject, World {
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64(Connection.GetCallbackId(callback))];
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
+				var offset = 0;
 				var _p0 = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
 				for(var i0 = 0; i0 < _p0.Length; ++i0) {
 					_p0[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
@@ -687,6 +693,7 @@ public class RemoteWorld : RemoteObject, World {
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64(Connection.GetCallbackId(callback))];
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
+				var offset = 0;
 				var _p0 = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
 				for(var i0 = 0; i0 < _p0.Length; ++i0) {
 					_p0[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
@@ -705,6 +712,7 @@ public class RemoteWorld : RemoteObject, World {
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64(Connection.GetCallbackId(callback))];
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
+				var offset = 0;
 				var _p0 = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
 				for(var i0 = 0; i0 < _p0.Length; ++i0) {
 					_p0[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
@@ -723,6 +731,7 @@ public class RemoteWorld : RemoteObject, World {
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64(Connection.GetCallbackId(callback))];
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
+				var offset = 0;
 				var _p0 = new Entity[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
 				for(var i0 = 0; i0 < _p0.Length; ++i0) {
 					_p0[i0] = Connection.GetObject<Entity>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id => new RemoteEntity(Connection, _id));
@@ -741,6 +750,7 @@ public class RemoteWorld : RemoteObject, World {
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64(Connection.GetCallbackId(callback))];
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
+				var offset = 0;
 				var _p0 = new Entity[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
 				for(var i0 = 0; i0 < _p0.Length; ++i0) {
 					_p0[i0] = Connection.GetObject<Entity>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id => new RemoteEntity(Connection, _id));

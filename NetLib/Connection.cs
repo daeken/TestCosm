@@ -4,7 +4,31 @@ using NetLib.Generated;
 using Object = NetLib.Generated.Object;
 #pragma warning disable CS4014
 
-namespace NetLib; 
+namespace NetLib;
+
+class CallbackObject : BaseObject {
+	readonly Func<ulong, Memory<byte>, Task> Callback;
+
+	public CallbackObject(IConnection connection, Func<ulong, Memory<byte>, Task> callback) : base(connection) =>
+		Callback = callback;
+	
+	public override Task<string[]> ListInterfaces() {
+		throw new NotImplementedException();
+	}
+	public override Task Release() {
+		throw new NotImplementedException();
+	}
+	public override async Task HandleMessage(ulong sequence, int commandNumber, Memory<byte> buf, int offset) {
+		switch(commandNumber) {
+			case 0 or 1: await base.HandleMessage(sequence, commandNumber, buf, offset); break;
+			case 2:
+				await Callback(sequence, buf[offset..]);
+				break;
+			default:
+				throw new UnknownCommandException();
+		}
+	}
+}
 
 public class Connection : IConnection {
 	public Stream Stream;
@@ -13,14 +37,20 @@ public class Connection : IConnection {
 	readonly ConcurrentDictionary<ulong, IRemoteObject> RemoteObjects = new();
 	readonly ConcurrentDictionary<ulong, ILocalObject> LocalObjects = new();
 	readonly ConcurrentDictionary<ulong, TaskCompletionSource<Memory<byte>>> ResponseWaiters = new();
+	readonly ConcurrentDictionary<object, ulong> LocalCallbackIds = new();
+	readonly ConcurrentDictionary<ulong, object> RemoteCallbacks = new();
 	ulong LocalObjectI;
 	readonly SemaphoreSlim SendSemaphore = new(1, 1);
-	ulong Sequence = 0;
+	ulong Sequence;
+	readonly Action<string> Log;
 	
-	public Connection(Stream stream, Func<Connection, BaseRoot> rootGenerator) {
+	public Connection(Stream stream, Func<Connection, BaseRoot> rootGenerator, Action<string> log = null) {
 		Stream = stream;
-		LocalObjects[0] = rootGenerator(this);
+		rootGenerator(this);
+		Debug.Assert(LocalObjects.Count >= 1);
 		RemoteObjects[0] = RemoteRoot = new RemoteRoot(this, 0);
+
+		Log = log ?? Console.WriteLine;
 	}
 
 	public async Task Loop() {
@@ -28,34 +58,34 @@ public class Connection : IConnection {
 		while(true) {
 			await Stream.ReadAllAsync(sbuf);
 			var compressionType = sbuf[0];
-			Console.WriteLine($"Got start of message with compression type {compressionType}!");
+			Log($"Got start of message with compression type {compressionType}!");
 			if(compressionType != 0) throw new DisconnectedException();
 			var size = 0UL;
 			var shift = 0;
-			Console.WriteLine("Reading message length...");
+			Log("Reading message length...");
 			while(true) {
 				await Stream.ReadAllAsync(sbuf);
-				Console.WriteLine($"Message length byte 0x{sbuf[0]:X02}");
+				Log($"Message length byte 0x{sbuf[0]:X02}");
 				var bval = sbuf[0];
 				size |= ((ulong) bval & 0x7F) << shift;
 				shift += 7;
 				if((bval & 0x80) == 0) break;
 			}
 			
-			Console.WriteLine($"Getting message buffer of length {size}");
+			Log($"Getting message buffer of length {size}");
 
 			var buf = new byte[size];
 			await Stream.ReadAllAsync(buf);
-			Console.WriteLine($"Message bytes: {string.Join(", ", buf.Select(x => $"{x:x02}"))}");
+			//Log($"Message bytes: {string.Join(", ", buf.Select(x => $"{x:x02}"))}");
 			var offset = 0;
 			var sequence = NetExtensions.DeserializeVu64(buf, ref offset);
 			var commandNum = NetExtensions.DeserializeVi32(buf, ref offset);
 			
-			Console.WriteLine($"Sequence {sequence} commandNum {commandNum}");
+			Log($"Sequence {sequence} commandNum {commandNum}");
 
 			if((sequence & 1) == 0) { // Call
 				var id = NetExtensions.DeserializeVu64(buf, ref offset);
-				Console.WriteLine($"Call to object {id}, command {commandNum}");
+				Log($"Call to object {id}, command {commandNum}");
 				if(!LocalObjects.TryGetValue(id, out var obj))
 					await Error(sequence, -1);
 				else
@@ -65,74 +95,75 @@ public class Connection : IConnection {
 						} catch(CommandException ce) {
 							await Error(sequence, ce.Error);
 						} catch(Exception e) {
-							Console.WriteLine($"Exception in handling command {commandNum} to object {id} ({obj}): {e}");
+							Log($"Exception in handling command {commandNum} to object {id} ({obj}): {e}");
 						}
 					});
 			} else { // Response
-				Console.WriteLine($"Got a response with sequence {sequence}");
+				Log($"Got a response with sequence {sequence}");
 				if(ResponseWaiters.TryRemove(sequence, out var waiter)) {
 					if(commandNum == 0) {
-						Console.WriteLine("Sending buffer to waiting call...");
+						Log("Sending buffer to waiting call...");
 						waiter.SetResult(buf.AsMemory()[offset..]);
 					} else {
-						Console.WriteLine("Sending error back to waiting call");
+						Log("Sending error back to waiting call");
 						waiter.SetException(new CommandException(commandNum));
 					}
 				} else
-					Console.WriteLine("Response for unknown sequence!");
+					Log("Response for unknown sequence!");
 			}
 		}
 	}
 
 	async Task SendMessage(Memory<byte> buf) {
-		Console.WriteLine("Attempting to get semaphore");
+		Log("Attempting to get semaphore");
 		await SendSemaphore.WaitAsync();
-		Console.WriteLine("Got semaphore");
+		Log("Got semaphore");
 		Memory<byte> mbuf = new byte[1 + NetExtensions.SizeVu64((ulong) buf.Length)];
 		mbuf.Span[0] = 0; // No compression
 		var offset = 1;
 		NetExtensions.SerializeVu64((ulong) buf.Length, mbuf.Span, ref offset);
-		Console.WriteLine($"Sending full message buffer of length {mbuf.Length + buf.Length}");
-		Console.WriteLine($"Message bytes being sent: {string.Join(", ", mbuf.ToArray().Select(x => $"{x:x02}"))}    {string.Join(", ", buf.ToArray().Select(x => $"{x:x02}"))}");
+		Log($"Sending full message buffer of length {mbuf.Length + buf.Length}");
+		//Log($"Message bytes being sent: {string.Join(", ", mbuf.ToArray().Select(x => $"{x:x02}"))}    {string.Join(", ", buf.ToArray().Select(x => $"{x:x02}"))}");
 		await Stream.WriteAsync(mbuf);
 		await Stream.WriteAsync(buf);
-		Console.WriteLine($"Sent message!");
+		Log($"Sent message!");
 		SendSemaphore.Release();
 	}
 
 	public async Task Handshake() {
-		var hstask = await Task.Factory.StartNew(async () => {
-			try {
-				Console.WriteLine("Going to request extensions...");
-				Extensions.AddRange(await RemoteRoot.ListExtensions());
-				Console.WriteLine($"Got list of extensions! {string.Join(", ", Extensions)}");
-			} catch(Exception e) {
-				Console.WriteLine($"Exception in handshake: {e}");
-			}
-		});
-		var looptask = await Task.Factory.StartNew(Loop);
-		await Task.WhenAny(hstask, looptask);
+		Task.Factory.StartNew(Loop);
+		try {
+			Log("Going to request extensions...");
+			Extensions.AddRange(await RemoteRoot.ListExtensions());
+			Log($"Got list of extensions! {string.Join(", ", Extensions)}");
+		} catch(Exception e) {
+			Log($"Exception in handshake: {e}");
+		}
 	}
 
 	public async Task<Memory<byte>> Call(ulong objectId, uint commandNumber, Memory<byte> buf) {
-		var sequence = Interlocked.Add(ref Sequence, 2);
-		Console.WriteLine($"Sending call with sequence {sequence}, objectId {objectId}, command number {commandNumber}");
+		ulong sequence;
+		lock(this) {
+			sequence = Sequence += 2;
+		}
+		Log($"Sending call with sequence {sequence}, objectId {objectId}, command number {commandNumber}");
+		//Log($"Call body: {string.Join(", ", buf.ToArray().Select(x => $"{x:x02}"))}");
 		Memory<byte> tbuf = new byte[NetExtensions.SizeVu64(sequence) + NetExtensions.SizeVi32((int) commandNumber) + NetExtensions.SizeVu64(objectId) + buf.Length];
 		var offset = 0;
 		NetExtensions.SerializeVu64(sequence, tbuf.Span, ref offset);
 		NetExtensions.SerializeVi32((int) commandNumber, tbuf.Span, ref offset);
 		NetExtensions.SerializeVu64(objectId, tbuf.Span, ref offset);
 		buf.CopyTo(tbuf[offset..]);
-		await SendMessage(tbuf);
 		var tcs = ResponseWaiters[sequence | 1] = new();
+		await SendMessage(tbuf);
 		var rbuf = await tcs.Task;
-		Console.WriteLine("Got response buffer!");
+		Log("Got response buffer!");
 		return rbuf;
 	}
 
 	async Task Respond(ulong sequence, int commandNumber, Memory<byte> buf) {
 		sequence |= 1;
-		Console.WriteLine($"Sending response with sequence {sequence}, command number {commandNumber}, and {buf.Length} bytes of data");
+		Log($"Sending response with sequence {sequence}, command number {commandNumber}, and {buf.Length} bytes of data");
 		Memory<byte> tbuf = new byte[NetExtensions.SizeVu64(sequence) + NetExtensions.SizeVi32(commandNumber) + buf.Length];
 		var offset = 0;
 		NetExtensions.SerializeVu64(sequence, tbuf.Span, ref offset);
@@ -150,8 +181,10 @@ public class Connection : IConnection {
 		await Respond(sequence, err, Memory<byte>.Empty);
 	}
 	public ulong RegisterLocalObject(ILocalObject obj) {
-		LocalObjects[LocalObjectI] = obj;
-		return LocalObjectI++;
+		lock(this) {
+			LocalObjects[LocalObjectI] = obj;
+			return LocalObjectI++;
+		}
 	}
 	public T GetObject<T>(ulong id, Func<ulong, T> generator) {
 		if(RemoteObjects.TryGetValue(id, out var obj) && obj is T tobj)
@@ -160,9 +193,16 @@ public class Connection : IConnection {
 	}
 
 	public T GetCallback<T>(ulong id, Func<ulong, T> generator) {
-		throw new NotImplementedException();
+		if(RemoteCallbacks.TryGetValue(id, out var cb)) return (T) cb;
+		return (T) (RemoteCallbacks[id] = generator(id));
 	}
 	public ulong GetCallbackId<T>(T callback, Func<Func<ulong, Memory<byte>, Task>> generator = null) {
-		throw new NotImplementedException();
+		var found = LocalCallbackIds.TryGetValue(callback, out var id);
+		if(found && (generator == null || LocalObjects[id] != null)) return id;
+		if(generator == null) return LocalCallbackIds[callback] = RegisterLocalObject(null);
+		var cbo = new CallbackObject(this, generator());
+		if(!found) return RegisterLocalObject(cbo);
+		LocalObjects[id] = cbo;
+		return id;
 	}
 }
