@@ -22,12 +22,6 @@ public class ServerAssetDelivery : BaseAssetDelivery {
 	public static void EnsureLoaded() {}
 	
 	public ServerAssetDelivery(IConnection connection) : base(connection) {}
-	public override Task<string[]> ListInterfaces() {
-		throw new NotImplementedException();
-	}
-	public override Task Release() {
-		throw new NotImplementedException();
-	}
 	public override Task SubscribeLoadAssets(Func<Asset[], Task> callback) {
 		throw new NotImplementedException();
 	}

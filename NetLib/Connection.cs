@@ -11,13 +11,8 @@ class CallbackObject : BaseObject {
 
 	public CallbackObject(IConnection connection, Func<ulong, Memory<byte>, Task> callback) : base(connection) =>
 		Callback = callback;
-	
-	public override Task<string[]> ListInterfaces() {
-		throw new NotImplementedException();
-	}
-	public override Task Release() {
-		throw new NotImplementedException();
-	}
+
+	public override async Task<string[]> ListInterfaces() => new[] { "hypercosm.object.v1.0.0", "hypercosm.callback.v1.0.0" };
 	public override async Task HandleMessage(ulong sequence, int commandNumber, Memory<byte> buf, int offset) {
 		switch(commandNumber) {
 			case 0 or 1: await base.HandleMessage(sequence, commandNumber, buf, offset); break;
@@ -204,5 +199,8 @@ public class Connection : IConnection {
 		if(!found) return RegisterLocalObject(cbo);
 		LocalObjects[id] = cbo;
 		return id;
+	}
+	public Task Release(ulong id) {
+		throw new NotImplementedException();
 	}
 }

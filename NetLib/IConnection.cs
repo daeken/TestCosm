@@ -8,4 +8,5 @@ public interface IConnection {
 	T GetObject<T>(ulong id, Func<ulong, T> generator);
 	T GetCallback<T>(ulong id, Func<ulong, T> generator);
 	ulong GetCallbackId<T>(T callback, Func<Func<ulong, Memory<byte>, Task>> generator = null);
+	Task Release(ulong id);
 }

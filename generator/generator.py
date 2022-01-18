@@ -2,9 +2,6 @@ from json import load
 
 spec = load(file('HIDL/json/hypercosm.json'))
 
-import pprint
-pprint.pprint(spec)
-
 namespaces = {}
 
 namespace = []
@@ -53,7 +50,11 @@ def parseInterface(elem): # TODO: Handle inheritance
 	methods = emethods + methods
 
 	ns = getNs()
-	ns['interfaces'][name] = {'methods' : methods}
+	ns['interfaces'][name] = {
+		'methods' : methods, 
+		'interfaces' : ['hypercosm.object.v1.0.0', '.'.join(namespace + ([] if namespace[-1] == name.lower() else [name.lower()])) + '.v%i.%i.%i' % tuple(elem['version'])]
+	}
+	print ns['interfaces'][name]['interfaces']
 
 def parseExtension(elem):
 	namespace.append(elem['name'])
@@ -322,8 +323,12 @@ with file('../NetLib/Generated/Protocol.cs', 'w') as fp:
 				print >>fp, '\t}'
 			else:
 				print >>fp, '\tprotected Base%s(IConnection connection) : base(connection) {}' % title(name)
+				print >>fp, '\tpublic sealed override async Task<string[]> ListInterfaces() => new[] { %s };' % ', '.join('"%s"' % n for n in iface['interfaces'])
 			for method in iface['methods']:
-				print >>fp, '\tpublic abstract %s %s(%s);' % (typed(method['ret'], isRet=True), title(method['name']), ', '.join('%s %s' % (typed(arg['ty']), named(arg['name'])) for arg in method['args']))
+				if isObject and method['name'] == 'release':
+					print >>fp, '\tpublic Task Release() => Connection.Release(ObjectId);'
+				else:
+					print >>fp, '\tpublic abstract %s %s(%s);' % (typed(method['ret'], isRet=True), title(method['name']), ', '.join('%s %s' % (typed(arg['ty']), named(arg['name'])) for arg in method['args']))
 			print >>fp
 			print >>fp, '\tpublic %s async Task HandleMessage(ulong sequence, int commandNumber, Memory<byte> buf, int offset) {' % ('override' if not isObject else 'virtual')
 			print >>fp, '\t\tswitch(commandNumber) {'

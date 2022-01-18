@@ -25,7 +25,7 @@ public abstract class BaseObject : ILocalObject, Object {
 		ObjectId = Connection.RegisterLocalObject(this);
 	}
 	public abstract Task<string[]> ListInterfaces();
-	public abstract Task Release();
+	public Task Release() => Connection.Release(ObjectId);
 
 	public virtual async Task HandleMessage(ulong sequence, int commandNumber, Memory<byte> buf, int offset) {
 		switch(commandNumber) {
@@ -83,6 +83,7 @@ public interface Root : Object {
 }
 public abstract class BaseRoot : BaseObject, Root {
 	protected BaseRoot(IConnection connection) : base(connection) {}
+	public sealed override async Task<string[]> ListInterfaces() => new[] { "hypercosm.object.v1.0.0", "hypercosm.root.v0.1.0" };
 	public abstract Task<string[]> ListExtensions();
 	public abstract Task Ping();
 	public abstract Task<Object> GetObjectById(Uuid id);
@@ -185,6 +186,7 @@ public interface AssetDelivery : Object {
 }
 public abstract class BaseAssetDelivery : BaseObject, AssetDelivery {
 	protected BaseAssetDelivery(IConnection connection) : base(connection) {}
+	public sealed override async Task<string[]> ListInterfaces() => new[] { "hypercosm.object.v1.0.0", "hypercosm.asset_delivery.v0.1.0" };
 	public abstract Task SubscribeLoadAssets(Func<Asset[], Task> callback);
 	public abstract Task UnsubscribeLoadAssets(Func<Asset[], Task> callback);
 	public abstract Task SubscribeUnloadAssets(Func<Uuid[], Task> callback);
@@ -519,6 +521,7 @@ public interface World : Object {
 }
 public abstract class BaseWorld : BaseObject, World {
 	protected BaseWorld(IConnection connection) : base(connection) {}
+	public sealed override async Task<string[]> ListInterfaces() => new[] { "hypercosm.object.v1.0.0", "hypercosm.world.v0.1.0" };
 	public abstract Task SubscribeAddEntities(Func<EntityInfo[], Task> callback);
 	public abstract Task UnsubscribeAddEntities(Func<EntityInfo[], Task> callback);
 	public abstract Task SubscribeUpdateEntities(Func<EntityInfo[], Task> callback);
@@ -771,6 +774,7 @@ public interface Entity : Object {
 }
 public abstract class BaseEntity : BaseObject, Entity {
 	protected BaseEntity(IConnection connection) : base(connection) {}
+	public sealed override async Task<string[]> ListInterfaces() => new[] { "hypercosm.object.v1.0.0", "hypercosm.world.entity.v0.1.0" };
 	public abstract Task Interact();
 
 	public override async Task HandleMessage(ulong sequence, int commandNumber, Memory<byte> buf, int offset) {

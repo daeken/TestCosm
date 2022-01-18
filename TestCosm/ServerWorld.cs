@@ -7,8 +7,6 @@ namespace TestCosm;
 
 class NoopEntity : BaseEntity {
 	public NoopEntity(IConnection connection) : base(connection) {}
-	public override Task<string[]> ListInterfaces() => throw new NotImplementedException();
-	public override Task Release() => throw new NotImplementedException();
 	public override Task Interact() => throw new NotImplementedException();
 }
 
@@ -18,10 +16,6 @@ public class ServerWorld : BaseWorld {
 
 	public ServerWorld(IConnection connection, ServerAssetDelivery assetDelivery) : base(connection) =>
 		AssetDelivery = assetDelivery;
-	public override async Task<string[]> ListInterfaces() => new[] { "hypercosm.object.v1.0.0", "hypercosm.world.v0.1.0" };
-	public override Task Release() {
-		throw new NotImplementedException();
-	}
 	public override async Task SubscribeAddEntities(Func<EntityInfo[], Task> callback) {
 		if(ServedEntities) return;
 
