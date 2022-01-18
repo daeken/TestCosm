@@ -1,0 +1,3 @@
+[submodule "generator/HIDL"]
+	path = generator/HIDL
+	url = https://github.com/Hypercosm/HIDL
