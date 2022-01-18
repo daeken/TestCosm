@@ -43,4 +43,6 @@ public struct Uuid {
 
 	public override bool Equals(object obj) => obj is Uuid other && Piece1 == other.Piece1 && Piece2 == other.Piece2;
 	public override int GetHashCode() => HashCode.Combine(Piece1.GetHashCode(), Piece2.GetHashCode());
+
+	public override string ToString() => $"{Piece1:X016}{Piece2:X016}";
 }
