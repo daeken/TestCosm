@@ -21,7 +21,7 @@ var conn = new Connection(stream, conn => new ClientRoot(conn));
 await conn.Handshake();
 
 var adObj = await conn.RemoteRoot.GetObjectByName("hypercosm.assetdelivery.v0.1.0");
-var assetDelivery = conn.GetObject(adObj.ObjectId, id => new RemoteAssetdelivery(conn, id));
+var assetDelivery = conn.GetObject(adObj.ObjectId, id => new RemoteAssetDelivery(conn, id));
 var wObj = await conn.RemoteRoot.GetObjectByName("hypercosm.world.v0.1.0");
 var world = conn.GetObject(wObj.ObjectId, id => new RemoteWorld(conn, id));
 //var asset = await assetDelivery.FetchAssetByName("Room/scene.gltf");

@@ -5,7 +5,7 @@ using NetLib.Generated;
 
 namespace TestCosm; 
 
-public class ServerAssetDelivery : BaseAssetdelivery {
+public class ServerAssetDelivery : BaseAssetDelivery {
 	static readonly Dictionary<Uuid, byte[]> Assets = new();
 	static readonly Dictionary<string, Uuid> NameToIdMap = new();
 	static readonly Dictionary<Uuid, string> IdToNameMap = new();
@@ -40,7 +40,7 @@ public class ServerAssetDelivery : BaseAssetdelivery {
 	public override Task UnsubscribeUnloadAssets(Func<Uuid[], Task> callback) {
 		throw new NotImplementedException();
 	}
-	public override async Task<Asset> FetchAssetById(Uuid id) {
+	public override async Task<Asset> FetchById(Uuid id) {
 		if(!Assets.TryGetValue(id, out var data)) throw new CommandException(1);
 		return new Asset {
 			Data = data, 
@@ -48,7 +48,7 @@ public class ServerAssetDelivery : BaseAssetdelivery {
 			Name = IdToNameMap[id]
 		};
 	}
-	public override async Task<Asset> FetchAssetByName(string name) {
+	public override async Task<Asset> FetchByName(string name) {
 		if(!NameToIdMap.TryGetValue(name, out var uuid)) throw new CommandException(1);
 		return new Asset {
 			Data = Assets[uuid], 
@@ -56,10 +56,10 @@ public class ServerAssetDelivery : BaseAssetdelivery {
 			Name = name
 		};
 	}
-	public override Task<Asset[]> FetchAssetsByIds(Uuid[] ids) {
+	public override Task<Asset[]> FetchByIds(Uuid[] ids) {
 		throw new NotImplementedException();
 	}
-	public override Task<Asset[]> FetchAssetsByNames(string[] names) {
+	public override Task<Asset[]> FetchByNames(string[] names) {
 		throw new NotImplementedException();
 	}
 	public override async Task<Uuid> GetId(string name) {

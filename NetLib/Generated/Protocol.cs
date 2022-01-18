@@ -112,8 +112,8 @@ public abstract class BaseRoot : BaseObject, Root {
 				break;
 			}
 			case 4: {
-				var Id = Uuid.Deserialize(buf.Span, ref offset);
-				var __ret = await GetObjectById(Id);
+				var id = Uuid.Deserialize(buf.Span, ref offset);
+				var __ret = await GetObjectById(id);
 				if(sequence != 0) {
 					buf = new byte[NetExtensions.SizeVu64(__ret.ObjectId)];
 					offset = 0;
@@ -123,8 +123,8 @@ public abstract class BaseRoot : BaseObject, Root {
 				break;
 			}
 			case 5: {
-				var Name = NetExtensions.DeserializeString(buf.Span, ref offset);
-				var __ret = await GetObjectByName(Name);
+				var name = NetExtensions.DeserializeString(buf.Span, ref offset);
+				var __ret = await GetObjectByName(name);
 				if(sequence != 0) {
 					buf = new byte[NetExtensions.SizeVu64(__ret.ObjectId)];
 					offset = 0;
@@ -172,111 +172,111 @@ public class RemoteRoot : RemoteObject, Root {
 	}
 }
 
-public interface Assetdelivery : Object {
+public interface AssetDelivery : Object {
 	Task SubscribeLoadAssets(Func<Asset[], Task> callback);
 	Task UnsubscribeLoadAssets(Func<Asset[], Task> callback);
 	Task SubscribeUnloadAssets(Func<Uuid[], Task> callback);
 	Task UnsubscribeUnloadAssets(Func<Uuid[], Task> callback);
-	Task<Asset> FetchAssetById(Uuid id);
-	Task<Asset> FetchAssetByName(string name);
-	Task<Asset[]> FetchAssetsByIds(Uuid[] ids);
-	Task<Asset[]> FetchAssetsByNames(string[] names);
+	Task<Asset> FetchById(Uuid id);
+	Task<Asset> FetchByName(string name);
+	Task<Asset[]> FetchByIds(Uuid[] ids);
+	Task<Asset[]> FetchByNames(string[] names);
 	Task<Uuid> GetId(string name);
 }
-public abstract class BaseAssetdelivery : BaseObject, Assetdelivery {
-	protected BaseAssetdelivery(IConnection connection) : base(connection) {}
+public abstract class BaseAssetDelivery : BaseObject, AssetDelivery {
+	protected BaseAssetDelivery(IConnection connection) : base(connection) {}
 	public abstract Task SubscribeLoadAssets(Func<Asset[], Task> callback);
 	public abstract Task UnsubscribeLoadAssets(Func<Asset[], Task> callback);
 	public abstract Task SubscribeUnloadAssets(Func<Uuid[], Task> callback);
 	public abstract Task UnsubscribeUnloadAssets(Func<Uuid[], Task> callback);
-	public abstract Task<Asset> FetchAssetById(Uuid id);
-	public abstract Task<Asset> FetchAssetByName(string name);
-	public abstract Task<Asset[]> FetchAssetsByIds(Uuid[] ids);
-	public abstract Task<Asset[]> FetchAssetsByNames(string[] names);
+	public abstract Task<Asset> FetchById(Uuid id);
+	public abstract Task<Asset> FetchByName(string name);
+	public abstract Task<Asset[]> FetchByIds(Uuid[] ids);
+	public abstract Task<Asset[]> FetchByNames(string[] names);
 	public abstract Task<Uuid> GetId(string name);
 
 	public override async Task HandleMessage(ulong sequence, int commandNumber, Memory<byte> buf, int offset) {
 		switch(commandNumber) {
 			case 0 or 1: await base.HandleMessage(sequence, commandNumber, buf, offset); break;
 			case 2: {
-				var Callback = Connection.GetCallback<Func<Asset[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
-					async (_p0) => {
+				var callback = Connection.GetCallback<Func<Asset[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
+					async (assets) => {
 						var offset = 0;
-						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) _p0.Length) + _p0.Select(_0 => _0.SerializedSize).Sum()];
-						NetExtensions.SerializeVu64((ulong) _p0.Length, buf.Span, ref offset);
-						foreach(var _4 in _p0) {
+						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) assets.Length) + assets.Select(_0 => _0.SerializedSize).Sum()];
+						NetExtensions.SerializeVu64((ulong) assets.Length, buf.Span, ref offset);
+						foreach(var _4 in assets) {
 							_4.Serialize(Connection, buf.Span, ref offset);
 						}
 						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
-				await SubscribeLoadAssets(Callback);
+				await SubscribeLoadAssets(callback);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
 				break;
 			}
 			case 3: {
-				var Callback = Connection.GetCallback<Func<Asset[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
-					async (_p0) => {
+				var callback = Connection.GetCallback<Func<Asset[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
+					async (assets) => {
 						var offset = 0;
-						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) _p0.Length) + _p0.Select(_0 => _0.SerializedSize).Sum()];
-						NetExtensions.SerializeVu64((ulong) _p0.Length, buf.Span, ref offset);
-						foreach(var _4 in _p0) {
+						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) assets.Length) + assets.Select(_0 => _0.SerializedSize).Sum()];
+						NetExtensions.SerializeVu64((ulong) assets.Length, buf.Span, ref offset);
+						foreach(var _4 in assets) {
 							_4.Serialize(Connection, buf.Span, ref offset);
 						}
 						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
-				await UnsubscribeLoadAssets(Callback);
+				await UnsubscribeLoadAssets(callback);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
 				break;
 			}
 			case 4: {
-				var Callback = Connection.GetCallback<Func<Uuid[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
-					async (_p0) => {
+				var callback = Connection.GetCallback<Func<Uuid[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
+					async (assets) => {
 						var offset = 0;
-						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) _p0.Length) + _p0.Select(_0 => 16).Sum()];
-						NetExtensions.SerializeVu64((ulong) _p0.Length, buf.Span, ref offset);
-						foreach(var _4 in _p0) {
+						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) assets.Length) + assets.Select(_0 => 16).Sum()];
+						NetExtensions.SerializeVu64((ulong) assets.Length, buf.Span, ref offset);
+						foreach(var _4 in assets) {
 							_4.Serialize(buf.Span, ref offset);
 						}
 						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
-				await SubscribeUnloadAssets(Callback);
+				await SubscribeUnloadAssets(callback);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
 				break;
 			}
 			case 5: {
-				var Callback = Connection.GetCallback<Func<Uuid[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
-					async (_p0) => {
+				var callback = Connection.GetCallback<Func<Uuid[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
+					async (assets) => {
 						var offset = 0;
-						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) _p0.Length) + _p0.Select(_0 => 16).Sum()];
-						NetExtensions.SerializeVu64((ulong) _p0.Length, buf.Span, ref offset);
-						foreach(var _4 in _p0) {
+						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) assets.Length) + assets.Select(_0 => 16).Sum()];
+						NetExtensions.SerializeVu64((ulong) assets.Length, buf.Span, ref offset);
+						foreach(var _4 in assets) {
 							_4.Serialize(buf.Span, ref offset);
 						}
 						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
-				await UnsubscribeUnloadAssets(Callback);
+				await UnsubscribeUnloadAssets(callback);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
 				break;
 			}
 			case 6: {
-				var Id = Uuid.Deserialize(buf.Span, ref offset);
-				var __ret = await FetchAssetById(Id);
+				var id = Uuid.Deserialize(buf.Span, ref offset);
+				var __ret = await FetchById(id);
 				if(sequence != 0) {
 					buf = new byte[__ret.SerializedSize];
 					offset = 0;
@@ -286,8 +286,8 @@ public abstract class BaseAssetdelivery : BaseObject, Assetdelivery {
 				break;
 			}
 			case 7: {
-				var Name = NetExtensions.DeserializeString(buf.Span, ref offset);
-				var __ret = await FetchAssetByName(Name);
+				var name = NetExtensions.DeserializeString(buf.Span, ref offset);
+				var __ret = await FetchByName(name);
 				if(sequence != 0) {
 					buf = new byte[__ret.SerializedSize];
 					offset = 0;
@@ -297,11 +297,11 @@ public abstract class BaseAssetdelivery : BaseObject, Assetdelivery {
 				break;
 			}
 			case 8: {
-				var Ids = new Uuid[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < Ids.Length; ++i0) {
-					Ids[i0] = Uuid.Deserialize(buf.Span, ref offset);
+				var ids = new Uuid[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < ids.Length; ++i0) {
+					ids[i0] = Uuid.Deserialize(buf.Span, ref offset);
 				}
-				var __ret = await FetchAssetsByIds(Ids);
+				var __ret = await FetchByIds(ids);
 				if(sequence != 0) {
 					buf = new byte[NetExtensions.SizeVu64((ulong) __ret.Length) + __ret.Select(_0 => _0.SerializedSize).Sum()];
 					offset = 0;
@@ -314,11 +314,11 @@ public abstract class BaseAssetdelivery : BaseObject, Assetdelivery {
 				break;
 			}
 			case 9: {
-				var Names = new string[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < Names.Length; ++i0) {
-					Names[i0] = NetExtensions.DeserializeString(buf.Span, ref offset);
+				var names = new string[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < names.Length; ++i0) {
+					names[i0] = NetExtensions.DeserializeString(buf.Span, ref offset);
 				}
-				var __ret = await FetchAssetsByNames(Names);
+				var __ret = await FetchByNames(names);
 				if(sequence != 0) {
 					buf = new byte[NetExtensions.SizeVu64((ulong) __ret.Length) + __ret.Select(_0 => _0.SerializedSize).Sum()];
 					offset = 0;
@@ -331,8 +331,8 @@ public abstract class BaseAssetdelivery : BaseObject, Assetdelivery {
 				break;
 			}
 			case 10: {
-				var Name = NetExtensions.DeserializeString(buf.Span, ref offset);
-				var __ret = await GetId(Name);
+				var name = NetExtensions.DeserializeString(buf.Span, ref offset);
+				var __ret = await GetId(name);
 				if(sequence != 0) {
 					buf = new byte[16];
 					offset = 0;
@@ -346,19 +346,19 @@ public abstract class BaseAssetdelivery : BaseObject, Assetdelivery {
 		}
 	}
 }
-public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
-	public RemoteAssetdelivery(IConnection connection, ulong id) : base(connection, id) {}
+public class RemoteAssetDelivery : RemoteObject, AssetDelivery {
+	public RemoteAssetDelivery(IConnection connection, ulong id) : base(connection, id) {}
 	public async Task SubscribeLoadAssets(Func<Asset[], Task> callback) {
 		var offset = 0;
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64(Connection.GetCallbackId(callback))];
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
 				var offset = 0;
-				var _p0 = new Asset[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < _p0.Length; ++i0) {
-					_p0[i0] = Asset.Deserialize(Connection, buf.Span, ref offset);
+				var assets = new Asset[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < assets.Length; ++i0) {
+					assets[i0] = Asset.Deserialize(Connection, buf.Span, ref offset);
 				}
-				await callback(_p0);
+				await callback(assets);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
@@ -373,11 +373,11 @@ public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
 				var offset = 0;
-				var _p0 = new Asset[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < _p0.Length; ++i0) {
-					_p0[i0] = Asset.Deserialize(Connection, buf.Span, ref offset);
+				var assets = new Asset[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < assets.Length; ++i0) {
+					assets[i0] = Asset.Deserialize(Connection, buf.Span, ref offset);
 				}
-				await callback(_p0);
+				await callback(assets);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
@@ -392,11 +392,11 @@ public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
 				var offset = 0;
-				var _p0 = new Uuid[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < _p0.Length; ++i0) {
-					_p0[i0] = Uuid.Deserialize(buf.Span, ref offset);
+				var assets = new Uuid[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < assets.Length; ++i0) {
+					assets[i0] = Uuid.Deserialize(buf.Span, ref offset);
 				}
-				await callback(_p0);
+				await callback(assets);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
@@ -411,11 +411,11 @@ public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
 				var offset = 0;
-				var _p0 = new Uuid[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < _p0.Length; ++i0) {
-					_p0[i0] = Uuid.Deserialize(buf.Span, ref offset);
+				var assets = new Uuid[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < assets.Length; ++i0) {
+					assets[i0] = Uuid.Deserialize(buf.Span, ref offset);
 				}
-				await callback(_p0);
+				await callback(assets);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
@@ -424,7 +424,7 @@ public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
 		await Connection.Call(ObjectId, 5, buf);
 		offset = 0;
 	}
-	public async Task<Asset> FetchAssetById(Uuid id) {
+	public async Task<Asset> FetchById(Uuid id) {
 		var offset = 0;
 		Memory<byte> buf = new byte[16];
 		id.Serialize(buf.Span, ref offset);
@@ -433,7 +433,7 @@ public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
 		var ret = Asset.Deserialize(Connection, buf.Span, ref offset);
 		return ret;
 	}
-	public async Task<Asset> FetchAssetByName(string name) {
+	public async Task<Asset> FetchByName(string name) {
 		var offset = 0;
 		Memory<byte> buf = new byte[NetExtensions.SizeString(name)];
 		NetExtensions.SerializeString(name, buf.Span, ref offset);
@@ -442,7 +442,7 @@ public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
 		var ret = Asset.Deserialize(Connection, buf.Span, ref offset);
 		return ret;
 	}
-	public async Task<Asset[]> FetchAssetsByIds(Uuid[] ids) {
+	public async Task<Asset[]> FetchByIds(Uuid[] ids) {
 		var offset = 0;
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) ids.Length) + ids.Select(_0 => 16).Sum()];
 		NetExtensions.SerializeVu64((ulong) ids.Length, buf.Span, ref offset);
@@ -457,7 +457,7 @@ public class RemoteAssetdelivery : RemoteObject, Assetdelivery {
 		}
 		return ret;
 	}
-	public async Task<Asset[]> FetchAssetsByNames(string[] names) {
+	public async Task<Asset[]> FetchByNames(string[] names) {
 		var offset = 0;
 		Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) names.Length) + names.Select(_0 => NetExtensions.SizeString(_0)).Sum()];
 		NetExtensions.SerializeVu64((ulong) names.Length, buf.Span, ref offset);
@@ -530,114 +530,114 @@ public abstract class BaseWorld : BaseObject, World {
 		switch(commandNumber) {
 			case 0 or 1: await base.HandleMessage(sequence, commandNumber, buf, offset); break;
 			case 2: {
-				var Callback = Connection.GetCallback<Func<EntityInfo[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
-					async (_p0) => {
+				var callback = Connection.GetCallback<Func<EntityInfo[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
+					async (entities) => {
 						var offset = 0;
-						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) _p0.Length) + _p0.Select(_0 => _0.SerializedSize).Sum()];
-						NetExtensions.SerializeVu64((ulong) _p0.Length, buf.Span, ref offset);
-						foreach(var _4 in _p0) {
+						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) entities.Length) + entities.Select(_0 => _0.SerializedSize).Sum()];
+						NetExtensions.SerializeVu64((ulong) entities.Length, buf.Span, ref offset);
+						foreach(var _4 in entities) {
 							_4.Serialize(Connection, buf.Span, ref offset);
 						}
 						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
-				await SubscribeAddEntities(Callback);
+				await SubscribeAddEntities(callback);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
 				break;
 			}
 			case 3: {
-				var Callback = Connection.GetCallback<Func<EntityInfo[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
-					async (_p0) => {
+				var callback = Connection.GetCallback<Func<EntityInfo[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
+					async (entities) => {
 						var offset = 0;
-						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) _p0.Length) + _p0.Select(_0 => _0.SerializedSize).Sum()];
-						NetExtensions.SerializeVu64((ulong) _p0.Length, buf.Span, ref offset);
-						foreach(var _4 in _p0) {
+						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) entities.Length) + entities.Select(_0 => _0.SerializedSize).Sum()];
+						NetExtensions.SerializeVu64((ulong) entities.Length, buf.Span, ref offset);
+						foreach(var _4 in entities) {
 							_4.Serialize(Connection, buf.Span, ref offset);
 						}
 						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
-				await UnsubscribeAddEntities(Callback);
+				await UnsubscribeAddEntities(callback);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
 				break;
 			}
 			case 4: {
-				var Callback = Connection.GetCallback<Func<EntityInfo[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
-					async (_p0) => {
+				var callback = Connection.GetCallback<Func<EntityInfo[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
+					async (entities) => {
 						var offset = 0;
-						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) _p0.Length) + _p0.Select(_0 => _0.SerializedSize).Sum()];
-						NetExtensions.SerializeVu64((ulong) _p0.Length, buf.Span, ref offset);
-						foreach(var _4 in _p0) {
+						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) entities.Length) + entities.Select(_0 => _0.SerializedSize).Sum()];
+						NetExtensions.SerializeVu64((ulong) entities.Length, buf.Span, ref offset);
+						foreach(var _4 in entities) {
 							_4.Serialize(Connection, buf.Span, ref offset);
 						}
 						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
-				await SubscribeUpdateEntities(Callback);
+				await SubscribeUpdateEntities(callback);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
 				break;
 			}
 			case 5: {
-				var Callback = Connection.GetCallback<Func<EntityInfo[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
-					async (_p0) => {
+				var callback = Connection.GetCallback<Func<EntityInfo[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
+					async (entities) => {
 						var offset = 0;
-						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) _p0.Length) + _p0.Select(_0 => _0.SerializedSize).Sum()];
-						NetExtensions.SerializeVu64((ulong) _p0.Length, buf.Span, ref offset);
-						foreach(var _4 in _p0) {
+						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) entities.Length) + entities.Select(_0 => _0.SerializedSize).Sum()];
+						NetExtensions.SerializeVu64((ulong) entities.Length, buf.Span, ref offset);
+						foreach(var _4 in entities) {
 							_4.Serialize(Connection, buf.Span, ref offset);
 						}
 						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
-				await UnsubscribeUpdateEntities(Callback);
+				await UnsubscribeUpdateEntities(callback);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
 				break;
 			}
 			case 6: {
-				var Callback = Connection.GetCallback<Func<Entity[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
-					async (_p0) => {
+				var callback = Connection.GetCallback<Func<Entity[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
+					async (entities) => {
 						var offset = 0;
-						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) _p0.Length) + _p0.Select(_0 => NetExtensions.SizeVu64(_0.ObjectId)).Sum()];
-						NetExtensions.SerializeVu64((ulong) _p0.Length, buf.Span, ref offset);
-						foreach(var _4 in _p0) {
+						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) entities.Length) + entities.Select(_0 => NetExtensions.SizeVu64(_0.ObjectId)).Sum()];
+						NetExtensions.SerializeVu64((ulong) entities.Length, buf.Span, ref offset);
+						foreach(var _4 in entities) {
 							NetExtensions.SerializeVu64(_4.ObjectId, buf.Span, ref offset);
 						}
 						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
-				await SubscribeRemoveEntities(Callback);
+				await SubscribeRemoveEntities(callback);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
 				break;
 			}
 			case 7: {
-				var Callback = Connection.GetCallback<Func<Entity[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
-					async (_p0) => {
+				var callback = Connection.GetCallback<Func<Entity[], Task>>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id =>
+					async (entities) => {
 						var offset = 0;
-						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) _p0.Length) + _p0.Select(_0 => NetExtensions.SizeVu64(_0.ObjectId)).Sum()];
-						NetExtensions.SerializeVu64((ulong) _p0.Length, buf.Span, ref offset);
-						foreach(var _4 in _p0) {
+						Memory<byte> buf = new byte[NetExtensions.SizeVu64((ulong) entities.Length) + entities.Select(_0 => NetExtensions.SizeVu64(_0.ObjectId)).Sum()];
+						NetExtensions.SerializeVu64((ulong) entities.Length, buf.Span, ref offset);
+						foreach(var _4 in entities) {
 							NetExtensions.SerializeVu64(_4.ObjectId, buf.Span, ref offset);
 						}
 						await Connection.Call(_id, 2, buf);
 						offset = 0;
 					}
 				);
-				await UnsubscribeRemoveEntities(Callback);
+				await UnsubscribeRemoveEntities(callback);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
@@ -656,11 +656,11 @@ public class RemoteWorld : RemoteObject, World {
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
 				var offset = 0;
-				var _p0 = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < _p0.Length; ++i0) {
-					_p0[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
+				var entities = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < entities.Length; ++i0) {
+					entities[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
 				}
-				await callback(_p0);
+				await callback(entities);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
@@ -675,11 +675,11 @@ public class RemoteWorld : RemoteObject, World {
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
 				var offset = 0;
-				var _p0 = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < _p0.Length; ++i0) {
-					_p0[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
+				var entities = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < entities.Length; ++i0) {
+					entities[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
 				}
-				await callback(_p0);
+				await callback(entities);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
@@ -694,11 +694,11 @@ public class RemoteWorld : RemoteObject, World {
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
 				var offset = 0;
-				var _p0 = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < _p0.Length; ++i0) {
-					_p0[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
+				var entities = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < entities.Length; ++i0) {
+					entities[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
 				}
-				await callback(_p0);
+				await callback(entities);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
@@ -713,11 +713,11 @@ public class RemoteWorld : RemoteObject, World {
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
 				var offset = 0;
-				var _p0 = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < _p0.Length; ++i0) {
-					_p0[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
+				var entities = new EntityInfo[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < entities.Length; ++i0) {
+					entities[i0] = EntityInfo.Deserialize(Connection, buf.Span, ref offset);
 				}
-				await callback(_p0);
+				await callback(entities);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
@@ -732,11 +732,11 @@ public class RemoteWorld : RemoteObject, World {
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
 				var offset = 0;
-				var _p0 = new Entity[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < _p0.Length; ++i0) {
-					_p0[i0] = Connection.GetObject<Entity>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id => new RemoteEntity(Connection, _id));
+				var entities = new Entity[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < entities.Length; ++i0) {
+					entities[i0] = Connection.GetObject<Entity>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id => new RemoteEntity(Connection, _id));
 				}
-				await callback(_p0);
+				await callback(entities);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
@@ -751,11 +751,11 @@ public class RemoteWorld : RemoteObject, World {
 		NetExtensions.SerializeVu64(Connection.GetCallbackId(callback, () =>
 			async (sequence, buf) => {
 				var offset = 0;
-				var _p0 = new Entity[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
-				for(var i0 = 0; i0 < _p0.Length; ++i0) {
-					_p0[i0] = Connection.GetObject<Entity>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id => new RemoteEntity(Connection, _id));
+				var entities = new Entity[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];
+				for(var i0 = 0; i0 < entities.Length; ++i0) {
+					entities[i0] = Connection.GetObject<Entity>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id => new RemoteEntity(Connection, _id));
 				}
-				await callback(_p0);
+				await callback(entities);
 				if(sequence != 0) {
 					await Connection.Respond(sequence, Memory<byte>.Empty);
 				}
@@ -818,6 +818,7 @@ public struct EntityInfo {
 	}
 }
 
+[Flags]
 public enum EntityFlags : ulong {
 	None = 0,
 	Interactable = 1,
