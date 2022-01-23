@@ -7,26 +7,28 @@ namespace TestCosm;
 
 public class ServerRoot : BaseRoot {
 	readonly Dictionary<string, Object> NamedObjects = new();
-	readonly ServerAssetDelivery AssetDelivery;
-	readonly ServerWorld World;
+	public readonly ServerAssetDelivery AssetDelivery;
+	public readonly ServerWorld World;
 
 	public ServerRoot(IConnection connection) : base(connection) {
 		AssetDelivery = new ServerAssetDelivery(connection);
 		World = new ServerWorld(connection, AssetDelivery);
 	}
-	public override async Task<string[]> ListExtensions() {
-		return new[] { "hypercosm.assetdelivery.v0.1.0", "hypercosm.world.v0.1.0" };
-	}
-	public override async Task Ping() {
-	}
+	public override Task<string[]> ListExtensions() =>
+		Task.FromResult(new[] {
+			NetLib.Generated.AssetDelivery._ProtocolName,
+			NetLib.Generated.World._ProtocolName,
+			NetLib.Generated.ExecutionContext._ProtocolName
+		});
+	public override async Task Ping() {}
 	public override Task<Object> GetObjectById(Uuid id) {
 		throw new CommandException(1);
 	}
 	public override async Task<Object> GetObjectByName(string name) {
 		if(NamedObjects.TryGetValue(name, out var obj)) return obj;
 		return NamedObjects[name] = name switch {
-			"hypercosm.assetdelivery.v0.1.0" => AssetDelivery, 
-			"hypercosm.world.v0.1.0" => World, 
+			NetLib.Generated.AssetDelivery._ProtocolName => AssetDelivery, 
+			NetLib.Generated.World._ProtocolName => World, 
 			_ => throw new CommandException(1)
 		};
 	}

@@ -9,6 +9,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\NetLib\NetLib.csproj" />
+      <ProjectReference Include="..\RuntimeLib\RuntimeLib.csproj" />
     </ItemGroup>
 
 </Project>

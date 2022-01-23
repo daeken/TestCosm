@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Text;
+using NetLib.Generated;
 
 namespace NetLib; 
 
@@ -25,7 +26,7 @@ public static partial class NetExtensions {
 		offset += 8;
 		return val;
 	}
-	public static int SizeU64(byte _) => 8;
+	public static int SizeU64(ulong _) => 8;
 
 	public static void SerializeVi32(int val, Span<byte> buf, ref int offset) {
 		var more = true;
@@ -118,6 +119,21 @@ public static partial class NetExtensions {
 		return val;
 	}
 	public static int SizeF32(float _) => 4;
+
+	public static void SerializeBytes(byte[] val, Span<byte> buf, ref int offset) {
+		SerializeVu64((ulong) val.Length, buf, ref offset);
+		if(offset + val.Length > buf.Length) throw new SerializationException();
+		val.CopyTo(buf[offset..(offset + val.Length)]);
+		offset += val.Length;
+	}
+	public static byte[] DeserializeBytes(Span<byte> buf, ref int offset) {
+		var len = (int) DeserializeVu64(buf, ref offset);
+		if(offset + len > buf.Length) throw new SerializationException();
+		var val = buf[offset..(offset + len)].ToArray();
+		offset += len;
+		return val;
+	}
+	public static int SizeBytes(byte[] val) => SizeVu64((ulong) val.Length) + val.Length;
 
 	public static void SerializeString(string val, Span<byte> buf, ref int offset) {
 		var bytes = Encoding.UTF8.GetBytes(val);

@@ -29,7 +29,7 @@ def named(x):
 		return s[0] + ''.join(map(title, s[1:]))
 	return x
 
-def parseInterface(elem): # TODO: Handle inheritance
+def parseInterface(elem, version=None): # TODO: Handle inheritance
 	name = elem['name']
 	
 	events = elem['events']
@@ -52,13 +52,14 @@ def parseInterface(elem): # TODO: Handle inheritance
 	ns = getNs()
 	ns['interfaces'][name] = {
 		'methods' : methods, 
-		'interfaces' : ['hypercosm.object.v1.0.0', '.'.join(namespace + ([] if namespace[-1] == name.lower() else [name.lower()])) + '.v%i.%i.%i' % tuple(elem['version'])]
+		'interfaces' : ['hypercosm.object.v1.0.0', '.'.join(namespace + ([] if namespace[-1] == name.lower() else [name.lower()])) + '.v%i.%i.%i' % tuple(elem['version'] if version is None else version)]
 	}
 	print ns['interfaces'][name]['interfaces']
 
 def parseExtension(elem):
 	namespace.append(elem['name'])
-	map(parseInterface, elem['interfaces'])
+	version = elem['version'] if 'version' in elem else None
+	map(lambda x: parseInterface(x, version), elem['interfaces'])
 	map(parseTypedef, elem['types'])
 	if 'extensions' in elem:
 		map(parseExtension, elem['extensions'])
@@ -121,6 +122,8 @@ def typed(type, isRet=False):
 		return typed(dict(Primitive=type['IntType']), isRet)
 	elif 'Array' in type:
 		return '%s[]' % typed(type['Array'])
+	elif 'Dictionary' in type:
+		return 'Dictionary<%s, %s>' % (typed(type['Dictionary']['key']), typed(type['Dictionary']['value']))
 	elif 'Callback' in type:
 		type = type['Callback']
 		ret = typed(type['ret'], True)
@@ -132,6 +135,8 @@ def typed(type, isRet=False):
 		return btypes[type['Primitive'].lower()]
 	elif 'Primitive' in type and type['Primitive'] == 'Object':
 		return 'Object'
+	elif 'Primitive' in type and type['Primitive'] == 'Bytes':
+		return 'byte[]'
 	elif 'Custom' in type:
 		return title(type['Custom'])
 	print type
@@ -162,27 +167,51 @@ with file('../NetLib/Generated/Protocol.cs', 'w') as fp:
 				print >>fp, ws + 'for(var i%i = 0; i%i < %s.Length; ++i%i) {' % (depth, depth, name, depth)
 				genDeserialize(type['Array'], '%s[i%i]' % (name, depth), depth + 1)
 				print >>fp, ws + '}'
+			elif 'Dictionary' in type:
+				keyType = type['Dictionary']['key']
+				valueType = type['Dictionary']['value']
+				print >>fp, ws + '%s%s = new Dictionary<%s, %s>();' % (var, name, typed(keyType), typed(valueType))
+				print >>fp, ws + 'var dictLen%i = (int) NetExtensions.DeserializeVu64(buf.Span, ref offset);' % depth
+				print >>fp, ws + 'for(var i%i = 0; i%i < dictLen%i; ++i%i) {' % (depth, depth, depth, depth)
+				print >>fp, ws + '\t%s key%i;' % (typed(keyType), depth)
+				genDeserialize(keyType, 'key%i' % depth, depth + 1)
+				print >>fp, ws + '\t%s value%i;' % (typed(valueType), depth)
+				genDeserialize(valueType, 'value%i' % depth, depth + 1)
+				print >>fp, ws + '\t%s[key%i] = value%i;' % (name, depth, depth)
+				print >>fp, ws + '}'
 			elif 'Primitive' in type and type['Primitive'].lower() in btypes and type['Primitive'] != 'Uuid':
 				print >>fp, ws + '%s = NetExtensions.Deserialize%s(buf, ref offset);' % (name, title(type['Primitive'].lower()))
 			elif 'Custom' in type and type['Custom'] in ns['enums']:
 				print >>fp, ws + '%s = (%s) NetExtensions.Deserialize%s(buf, ref offset);' % (name, title(type['Custom']), title(ns['enums'][type['Custom']][1]['Primitive'].lower()))
 			elif 'Primitive' in type and type['Primitive'] == 'Object':
 				print >>fp, ws + '%s = connection.GetObject<Object>(NetExtensions.DeserializeVu64(buf, ref offset), _id => new RemoteObject(connection, _id));' % name
+			elif 'Primitive' in type and type['Primitive'] == 'Bytes':
+				print >>fp, ws + '%s = NetExtensions.DeserializeBytes(buf, ref offset);' % name
 			elif 'Custom' in type and type['Custom'] in ns['interfaces']:
 				print >>fp, ws + '%s = connection.GetObject<%s>(NetExtensions.DeserializeVu64(buf, ref offset), _id => new Remote%s(connection, _id));' % (name, title(type['Custom']), title(type['Custom']))
 			elif 'Primitive' in type and type['Primitive'] == 'Uuid':
 				print >>fp, ws + '%s = Uuid.Deserialize(buf, ref offset);' % name
 			else:
 				print >>fp, ws + '%s = %s.Deserialize(connection, buf, ref offset);' % (name, title(type[0]))
-		def genMsgDeserialize(type, name, depth = 0, depthOffset = 0):
+		def genMsgDeserialize(type, name, depth = 0, depthOffset = 0, forceVar = False):
 			if 'IntType' in type:
 				return genMsgDeserialize(dict(Primitive=type['IntType']), name, depth, depthOffset)
 			ws = '\t\t' + '\t' * (depth + depthOffset)
-			var = 'var ' if depth == 0 else ''
+			var = 'var ' if depth == 0 or forceVar else ''
 			if 'Array' in type:
 				print >>fp, ws + '%s%s = new %s[(int) NetExtensions.DeserializeVu64(buf.Span, ref offset)];' % (var, name, typed(type['Array']))
 				print >>fp, ws + 'for(var i%i = 0; i%i < %s.Length; ++i%i) {' % (depth, depth, name, depth)
 				genMsgDeserialize(type['Array'], '%s[i%i]' % (name, depth), depth + 1, depthOffset)
+				print >>fp, ws + '}'
+			elif 'Dictionary' in type:
+				keyType = type['Dictionary']['key']
+				valueType = type['Dictionary']['value']
+				print >>fp, ws + '%s%s = new Dictionary<%s, %s>();' % (var, name, typed(keyType), typed(valueType))
+				print >>fp, ws + 'var dictLen%i = (int) NetExtensions.DeserializeVu64(buf.Span, ref offset);' % depth
+				print >>fp, ws + 'for(var i%i = 0; i%i < dictLen%i; ++i%i) {' % (depth, depth, depth, depth)
+				genMsgDeserialize(keyType, 'key%i' % depth, depth + 1, depthOffset, forceVar=True)
+				genMsgDeserialize(valueType, 'value%i' % depth, depth + 1, depthOffset, forceVar=True)
+				print >>fp, ws + '\t%s[key%i] = value%i;' % (name, depth, depth)
 				print >>fp, ws + '}'
 			elif 'Primitive' in type and type['Primitive'].lower() in btypes and type['Primitive'] != 'Uuid':
 				print >>fp, ws + '%s%s = NetExtensions.Deserialize%s(buf.Span, ref offset);' % (var, name, title(type['Primitive'].lower()))
@@ -190,6 +219,8 @@ with file('../NetLib/Generated/Protocol.cs', 'w') as fp:
 				print >>fp, ws + '%s%s = (%s) NetExtensions.Deserialize%s(buf.Span, ref offset);' % (var, name, title(type['Custom']), title(ns['enums'][type['Custom']][1]['Primitive'].lower()))
 			elif 'Primitive' in type and type['Primitive'] == 'Object':
 				print >>fp, ws + '%s%s = Connection.GetObject<Object>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id => new RemoteObject(Connection, _id));' % (var, name)
+			elif 'Primitive' in type and type['Primitive'] == 'Bytes':
+				print >>fp, ws + '%s%s = NetExtensions.DeserializeBytes(buf, ref offset);' % (var, name)
 			elif 'Custom' in type and type['Custom'] in ns['interfaces']:
 				print >>fp, ws + '%s%s = Connection.GetObject<%s>(NetExtensions.DeserializeVu64(buf.Span, ref offset), _id => new Remote%s(Connection, _id));' % (var, name, title(type['Custom']), title(type['Custom']))
 			elif 'Callback' in type:
@@ -227,12 +258,22 @@ with file('../NetLib/Generated/Protocol.cs', 'w') as fp:
 				print >>fp, ws + 'foreach(var _%i in %s) {' % (depth, value)
 				genSerialize(type['Array'], '_%i' % depth, depth+1)
 				print >>fp, ws + '}'
+			elif 'Dictionary' in type:
+				keyType = type['Dictionary']['key']
+				valueType = type['Dictionary']['value']
+				print >>fp, ws + 'NetExtensions.SerializeVu64((ulong) %s.Count, buf.Span, ref offset);' % value
+				print >>fp, ws + 'foreach(var (key%i, value%i) in %s) {' % (depth, depth, value)
+				genSerialize(keyType, 'key%i' % depth, depth+1)
+				genSerialize(valueType, 'value%i' % depth, depth+1)
+				print >>fp, ws + '}'
 			elif 'Primitive' in type and type['Primitive'].lower() in btypes and type['Primitive'] != 'Uuid':
 				print >>fp, ws + 'NetExtensions.Serialize%s(%s, buf, ref offset);' % (title(type['Primitive'].lower()), value)
 			elif 'Custom' in type and type['Custom'] in ns['enums']:
 				genSerialize(ns['enums'][type['Custom']][1], '(%s) %s' % (typed(ns['enums'][type['Custom']][1]), value), depth)
 			elif ('Primitive' in type and type['Primitive'] == 'Object') or ('Custom' in type and type['Custom'] in ns['interfaces']):
 				genSerialize(dict(Primitive='vu64'), '%s.ObjectId' % value, depth)
+			elif 'Primitive' in type and type['Primitive'] == 'Bytes':
+				print >>fp, ws + 'NetExtensions.SerializeBytes(%s, buf, ref offset);' % value
 			elif 'Primitive' in type and type['Primitive'] == 'Uuid':
 				print >>fp, ws + '%s.Serialize(buf, ref offset);' % value
 			elif 'Callback' in type:
@@ -248,12 +289,22 @@ with file('../NetLib/Generated/Protocol.cs', 'w') as fp:
 				print >>fp, ws + 'foreach(var _%i in %s) {' % (depth, value)
 				genMsgSerialize(type['Array'], '_%i' % depth, depth+1)
 				print >>fp, ws + '}'
+			elif 'Dictionary' in type:
+				keyType = type['Dictionary']['key']
+				valueType = type['Dictionary']['value']
+				print >>fp, ws + 'NetExtensions.SerializeVu64((ulong) %s.Count, buf.Span, ref offset);' % value
+				print >>fp, ws + 'foreach(var (key%i, value%i) in %s) {' % (depth, depth, value)
+				genMsgSerialize(keyType, 'key%i' % depth, depth+1)
+				genMsgSerialize(valueType, 'value%i' % depth, depth+1)
+				print >>fp, ws + '}'
 			elif 'Primitive' in type and type['Primitive'].lower() in btypes and type['Primitive'] != 'Uuid':
 				print >>fp, ws + 'NetExtensions.Serialize%s(%s, buf.Span, ref offset);' % (title(type['Primitive'].lower()), value)
 			elif 'Custom' in type and type['Custom'] in ns['enums']:
 				genMsgSerialize(ns['enums'][type['Custom']][1], '(%s) %s' % (typed(ns['enums'][type['Custom']][1]), value), depth)
 			elif ('Primitive' in type and type['Primitive'] == 'Object') or ('Custom' in type and type['Custom'] in ns['interfaces']):
 				genMsgSerialize(dict(Primitive='vu64'), '%s.ObjectId' % value, depth)
+			elif 'Primitive' in type and type['Primitive'] == 'Bytes':
+				print >>fp, ws + 'NetExtensions.SerializeBytes(%s, buf.Span, ref offset);' % value
 			elif 'Primitive' in type and type['Primitive'] == 'Uuid':
 				print >>fp, ws + '%s.Serialize(buf.Span, ref offset);' % value
 			elif 'Callback' in type:
@@ -287,8 +338,14 @@ with file('../NetLib/Generated/Protocol.cs', 'w') as fp:
 				return genSize(dict(Primitive=type['IntType']), value, depth)
 			if 'Array' in type:
 				return 'NetExtensions.SizeVu64((ulong) %s.Length) + %s.Select(_%i => %s).Sum()' % (value, value, depth, genSize(type['Array'], '_%i' % depth, depth + 1))
+			elif 'Dictionary' in type:
+				keyType = type['Dictionary']['key']
+				valueType = type['Dictionary']['value']
+				return 'NetExtensions.SizeVu64((ulong) %s.Count) + %s.Select(_%i => %s + %s).Sum()' % (value, value, depth, genSize(keyType, '_%i.Key' % depth, depth + 1), genSize(valueType, '_%i.Value' % depth, depth + 1))
 			elif 'Primitive' in type and type['Primitive'] == 'Uuid':
 				return '16'
+			elif 'Primitive' in type and type['Primitive'] == 'Bytes':
+				return 'NetExtensions.SizeBytes(%s)' % value
 			elif 'Primitive' in type and type['Primitive'].lower() in btypes:
 				return 'NetExtensions.Size%s(%s)' % (title(type['Primitive'].lower()), value)
 			elif 'Custom' in type and type['Custom'] in ns['enums']:
@@ -308,6 +365,8 @@ with file('../NetLib/Generated/Protocol.cs', 'w') as fp:
 			isObject = nsn == 'Hypercosm' and name == 'Object'
 			print >>fp
 			print >>fp, 'public interface %s%s {' % (title(name), ' : Object' if not isObject else '')
+			print >>fp, '\tpublic %sconst string _ProtocolName = "%s";' % ('' if isObject else 'new ', iface['interfaces'][-1])
+			print >>fp, '\tinternal %sstatic readonly Type _RemoteType = typeof(Remote%s);' % ('' if isObject else 'new ', title(name))
 			if isObject:
 				print >>fp, '\tulong ObjectId { get; }'
 			for method in iface['methods']:
@@ -323,7 +382,7 @@ with file('../NetLib/Generated/Protocol.cs', 'w') as fp:
 				print >>fp, '\t}'
 			else:
 				print >>fp, '\tprotected Base%s(IConnection connection) : base(connection) {}' % title(name)
-				print >>fp, '\tpublic sealed override async Task<string[]> ListInterfaces() => new[] { %s };' % ', '.join('"%s"' % n for n in iface['interfaces'])
+				print >>fp, '\tpublic sealed override Task<string[]> ListInterfaces() => Task.FromResult(new[] { %s });' % ', '.join('"%s"' % n for n in iface['interfaces'])
 			for method in iface['methods']:
 				if isObject and method['name'] == 'release':
 					print >>fp, '\tpublic Task Release() => Connection.Release(ObjectId);'

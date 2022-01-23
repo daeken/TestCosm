@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Reflection;
 using NetLib.Generated;
 using Object = NetLib.Generated.Object;
 #pragma warning disable CS4014
@@ -12,7 +13,7 @@ class CallbackObject : BaseObject {
 	public CallbackObject(IConnection connection, Func<ulong, Memory<byte>, Task> callback) : base(connection) =>
 		Callback = callback;
 
-	public override async Task<string[]> ListInterfaces() => new[] { "hypercosm.object.v1.0.0", "hypercosm.callback.v1.0.0" };
+	public override Task<string[]> ListInterfaces() => Task.FromResult(new[] { "hypercosm.object.v1.0.0", "hypercosm.callback.v1.0.0" });
 	public override async Task HandleMessage(ulong sequence, int commandNumber, Memory<byte> buf, int offset) {
 		switch(commandNumber) {
 			case 0 or 1: await base.HandleMessage(sequence, commandNumber, buf, offset); break;
@@ -181,10 +182,18 @@ public class Connection : IConnection {
 			return LocalObjectI++;
 		}
 	}
+	public T GetLocalObject<T>(ulong id) where T : BaseObject => LocalObjects.TryGetValue(id, out var obj) ? obj as T : null;
 	public T GetObject<T>(ulong id, Func<ulong, T> generator) {
 		if(RemoteObjects.TryGetValue(id, out var obj) && obj is T tobj)
 			return tobj;
 		return (T) (RemoteObjects[id] = (IRemoteObject) generator(id));
+	}
+
+	public async Task<T> GetObjectFromRoot<T>() where T : Object {
+		var iname = (string) typeof(T).GetField("_ProtocolName", BindingFlags.Static | BindingFlags.Public)?.GetValue(null) ?? throw new Exception();
+		var gobj = await RemoteRoot.GetObjectByName(iname);
+		var rtype = (Type) typeof(T).GetField("_RemoteType", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue(null) ?? throw new Exception();
+		return (T) Activator.CreateInstance(rtype, this, gobj.ObjectId);
 	}
 
 	public T GetCallback<T>(ulong id, Func<ulong, T> generator) {

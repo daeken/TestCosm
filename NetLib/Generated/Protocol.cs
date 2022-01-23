@@ -13,6 +13,8 @@ using System.Collections.Generic;
 namespace NetLib.Generated;
 
 public interface Object {
+	public const string _ProtocolName = "hypercosm.object.v1.0.0";
+	internal static readonly Type _RemoteType = typeof(RemoteObject);
 	ulong ObjectId { get; }
 	Task<string[]> ListInterfaces();
 	Task Release();
@@ -76,6 +78,8 @@ public class RemoteObject : IRemoteObject, Object {
 }
 
 public interface Root : Object {
+	public new const string _ProtocolName = "hypercosm.root.v0.1.0";
+	internal new static readonly Type _RemoteType = typeof(RemoteRoot);
 	Task<string[]> ListExtensions();
 	Task Ping();
 	Task<Object> GetObjectById(Uuid id);
@@ -83,7 +87,7 @@ public interface Root : Object {
 }
 public abstract class BaseRoot : BaseObject, Root {
 	protected BaseRoot(IConnection connection) : base(connection) {}
-	public sealed override async Task<string[]> ListInterfaces() => new[] { "hypercosm.object.v1.0.0", "hypercosm.root.v0.1.0" };
+	public sealed override Task<string[]> ListInterfaces() => Task.FromResult(new[] { "hypercosm.object.v1.0.0", "hypercosm.root.v0.1.0" });
 	public abstract Task<string[]> ListExtensions();
 	public abstract Task Ping();
 	public abstract Task<Object> GetObjectById(Uuid id);
@@ -173,7 +177,143 @@ public class RemoteRoot : RemoteObject, Root {
 	}
 }
 
+public interface ExecutionContext : Object {
+	public new const string _ProtocolName = "hypercosm.execution_context.v0.1.0";
+	internal new static readonly Type _RemoteType = typeof(RemoteExecutionContext);
+	Task<ulong> LoadWasmModule(Uuid assetId, Dictionary<string, string> exports);
+	Task<ulong> LoadLuaScript(Uuid assetId);
+	Task<ulong> LoadInlineLuaScript(string script);
+	Task BeginExecution(ulong moduleOrScript, string entryPoint);
+	Task BeginInlineLuaExecution(string script);
+}
+public abstract class BaseExecutionContext : BaseObject, ExecutionContext {
+	protected BaseExecutionContext(IConnection connection) : base(connection) {}
+	public sealed override Task<string[]> ListInterfaces() => Task.FromResult(new[] { "hypercosm.object.v1.0.0", "hypercosm.execution_context.v0.1.0" });
+	public abstract Task<ulong> LoadWasmModule(Uuid assetId, Dictionary<string, string> exports);
+	public abstract Task<ulong> LoadLuaScript(Uuid assetId);
+	public abstract Task<ulong> LoadInlineLuaScript(string script);
+	public abstract Task BeginExecution(ulong moduleOrScript, string entryPoint);
+	public abstract Task BeginInlineLuaExecution(string script);
+
+	public override async Task HandleMessage(ulong sequence, int commandNumber, Memory<byte> buf, int offset) {
+		switch(commandNumber) {
+			case 0 or 1: await base.HandleMessage(sequence, commandNumber, buf, offset); break;
+			case 2: {
+				var assetId = Uuid.Deserialize(buf.Span, ref offset);
+				var exports = new Dictionary<string, string>();
+				var dictLen0 = (int) NetExtensions.DeserializeVu64(buf.Span, ref offset);
+				for(var i0 = 0; i0 < dictLen0; ++i0) {
+					var key0 = NetExtensions.DeserializeString(buf.Span, ref offset);
+					var value0 = NetExtensions.DeserializeString(buf.Span, ref offset);
+					exports[key0] = value0;
+				}
+				var __ret = await LoadWasmModule(assetId, exports);
+				if(sequence != 0) {
+					buf = new byte[NetExtensions.SizeVu64(__ret)];
+					offset = 0;
+					NetExtensions.SerializeVu64(__ret, buf.Span, ref offset);
+					await Connection.Respond(sequence, buf);
+				}
+				break;
+			}
+			case 3: {
+				var assetId = Uuid.Deserialize(buf.Span, ref offset);
+				var __ret = await LoadLuaScript(assetId);
+				if(sequence != 0) {
+					buf = new byte[NetExtensions.SizeVu64(__ret)];
+					offset = 0;
+					NetExtensions.SerializeVu64(__ret, buf.Span, ref offset);
+					await Connection.Respond(sequence, buf);
+				}
+				break;
+			}
+			case 4: {
+				var script = NetExtensions.DeserializeString(buf.Span, ref offset);
+				var __ret = await LoadInlineLuaScript(script);
+				if(sequence != 0) {
+					buf = new byte[NetExtensions.SizeVu64(__ret)];
+					offset = 0;
+					NetExtensions.SerializeVu64(__ret, buf.Span, ref offset);
+					await Connection.Respond(sequence, buf);
+				}
+				break;
+			}
+			case 5: {
+				var moduleOrScript = NetExtensions.DeserializeVu64(buf.Span, ref offset);
+				var entryPoint = NetExtensions.DeserializeString(buf.Span, ref offset);
+				await BeginExecution(moduleOrScript, entryPoint);
+				if(sequence != 0) {
+					await Connection.Respond(sequence, Memory<byte>.Empty);
+				}
+				break;
+			}
+			case 6: {
+				var script = NetExtensions.DeserializeString(buf.Span, ref offset);
+				await BeginInlineLuaExecution(script);
+				if(sequence != 0) {
+					await Connection.Respond(sequence, Memory<byte>.Empty);
+				}
+				break;
+			}
+			default:
+				throw new UnknownCommandException();
+		}
+	}
+}
+public class RemoteExecutionContext : RemoteObject, ExecutionContext {
+	public RemoteExecutionContext(IConnection connection, ulong id) : base(connection, id) {}
+	public async Task<ulong> LoadWasmModule(Uuid assetId, Dictionary<string, string> exports) {
+		var offset = 0;
+		Memory<byte> buf = new byte[16 + NetExtensions.SizeVu64((ulong) exports.Count) + exports.Select(_0 => NetExtensions.SizeString(_0.Key) + NetExtensions.SizeString(_0.Value)).Sum()];
+		assetId.Serialize(buf.Span, ref offset);
+		NetExtensions.SerializeVu64((ulong) exports.Count, buf.Span, ref offset);
+		foreach(var (key0, value0) in exports) {
+			NetExtensions.SerializeString(key0, buf.Span, ref offset);
+			NetExtensions.SerializeString(value0, buf.Span, ref offset);
+		}
+		buf = await Connection.Call(ObjectId, 2, buf);
+		offset = 0;
+		var ret = NetExtensions.DeserializeVu64(buf.Span, ref offset);
+		return ret;
+	}
+	public async Task<ulong> LoadLuaScript(Uuid assetId) {
+		var offset = 0;
+		Memory<byte> buf = new byte[16];
+		assetId.Serialize(buf.Span, ref offset);
+		buf = await Connection.Call(ObjectId, 3, buf);
+		offset = 0;
+		var ret = NetExtensions.DeserializeVu64(buf.Span, ref offset);
+		return ret;
+	}
+	public async Task<ulong> LoadInlineLuaScript(string script) {
+		var offset = 0;
+		Memory<byte> buf = new byte[NetExtensions.SizeString(script)];
+		NetExtensions.SerializeString(script, buf.Span, ref offset);
+		buf = await Connection.Call(ObjectId, 4, buf);
+		offset = 0;
+		var ret = NetExtensions.DeserializeVu64(buf.Span, ref offset);
+		return ret;
+	}
+	public async Task BeginExecution(ulong moduleOrScript, string entryPoint) {
+		var offset = 0;
+		Memory<byte> buf = new byte[NetExtensions.SizeVu64(moduleOrScript) + NetExtensions.SizeString(entryPoint)];
+		NetExtensions.SerializeVu64(moduleOrScript, buf.Span, ref offset);
+		NetExtensions.SerializeString(entryPoint, buf.Span, ref offset);
+		await Connection.Call(ObjectId, 5, buf);
+		offset = 0;
+	}
+	public async Task BeginInlineLuaExecution(string script) {
+		var offset = 0;
+		Memory<byte> buf = new byte[NetExtensions.SizeString(script)];
+		NetExtensions.SerializeString(script, buf.Span, ref offset);
+		await Connection.Call(ObjectId, 6, buf);
+		offset = 0;
+	}
+}
+
 public interface AssetDelivery : Object {
+	public new const string _ProtocolName = "hypercosm.asset_delivery.v0.1.0";
+	internal new static readonly Type _RemoteType = typeof(RemoteAssetDelivery);
 	Task SubscribeLoadAssets(Func<Asset[], Task> callback);
 	Task UnsubscribeLoadAssets(Func<Asset[], Task> callback);
 	Task SubscribeUnloadAssets(Func<Uuid[], Task> callback);
@@ -186,7 +326,7 @@ public interface AssetDelivery : Object {
 }
 public abstract class BaseAssetDelivery : BaseObject, AssetDelivery {
 	protected BaseAssetDelivery(IConnection connection) : base(connection) {}
-	public sealed override async Task<string[]> ListInterfaces() => new[] { "hypercosm.object.v1.0.0", "hypercosm.asset_delivery.v0.1.0" };
+	public sealed override Task<string[]> ListInterfaces() => Task.FromResult(new[] { "hypercosm.object.v1.0.0", "hypercosm.asset_delivery.v0.1.0" });
 	public abstract Task SubscribeLoadAssets(Func<Asset[], Task> callback);
 	public abstract Task UnsubscribeLoadAssets(Func<Asset[], Task> callback);
 	public abstract Task SubscribeUnloadAssets(Func<Uuid[], Task> callback);
@@ -490,28 +630,24 @@ public struct Asset {
 	public string Name;
 	public byte[] Data;
 
-	public int SerializedSize => 16 + NetExtensions.SizeString(Name) + NetExtensions.SizeVu64((ulong) Data.Length) + Data.Select(_0 => NetExtensions.SizeU8(_0)).Sum();
+	public int SerializedSize => 16 + NetExtensions.SizeString(Name) + NetExtensions.SizeBytes(Data);
 	public void Serialize(IConnection connection, Span<byte> buf, ref int offset) {
 		Id.Serialize(buf, ref offset);
 		NetExtensions.SerializeString(Name, buf, ref offset);
-		NetExtensions.SerializeVu64((ulong) Data.Length, buf, ref offset);
-		foreach(var _0 in Data) {
-			NetExtensions.SerializeU8(_0, buf, ref offset);
-		}
+		NetExtensions.SerializeBytes(Data, buf, ref offset);
 	}
 	public static Asset Deserialize(IConnection connection, Span<byte> buf, ref int offset) {
 		var obj = new Asset();
 		obj.Id = Uuid.Deserialize(buf, ref offset);
 		obj.Name = NetExtensions.DeserializeString(buf, ref offset);
-		obj.Data = new byte[(int) NetExtensions.DeserializeVu64(buf, ref offset)];
-		for(var i0 = 0; i0 < obj.Data.Length; ++i0) {
-			obj.Data[i0] = NetExtensions.DeserializeU8(buf, ref offset);
-		}
+		obj.Data = NetExtensions.DeserializeBytes(buf, ref offset);
 		return obj;
 	}
 }
 
 public interface World : Object {
+	public new const string _ProtocolName = "hypercosm.world.v0.1.0";
+	internal new static readonly Type _RemoteType = typeof(RemoteWorld);
 	Task SubscribeAddEntities(Func<EntityInfo[], Task> callback);
 	Task UnsubscribeAddEntities(Func<EntityInfo[], Task> callback);
 	Task SubscribeUpdateEntities(Func<EntityInfo[], Task> callback);
@@ -521,7 +657,7 @@ public interface World : Object {
 }
 public abstract class BaseWorld : BaseObject, World {
 	protected BaseWorld(IConnection connection) : base(connection) {}
-	public sealed override async Task<string[]> ListInterfaces() => new[] { "hypercosm.object.v1.0.0", "hypercosm.world.v0.1.0" };
+	public sealed override Task<string[]> ListInterfaces() => Task.FromResult(new[] { "hypercosm.object.v1.0.0", "hypercosm.world.v0.1.0" });
 	public abstract Task SubscribeAddEntities(Func<EntityInfo[], Task> callback);
 	public abstract Task UnsubscribeAddEntities(Func<EntityInfo[], Task> callback);
 	public abstract Task SubscribeUpdateEntities(Func<EntityInfo[], Task> callback);
@@ -770,11 +906,13 @@ public class RemoteWorld : RemoteObject, World {
 }
 
 public interface Entity : Object {
+	public new const string _ProtocolName = "hypercosm.world.entity.v0.1.0";
+	internal new static readonly Type _RemoteType = typeof(RemoteEntity);
 	Task Interact();
 }
 public abstract class BaseEntity : BaseObject, Entity {
 	protected BaseEntity(IConnection connection) : base(connection) {}
-	public sealed override async Task<string[]> ListInterfaces() => new[] { "hypercosm.object.v1.0.0", "hypercosm.world.entity.v0.1.0" };
+	public sealed override Task<string[]> ListInterfaces() => Task.FromResult(new[] { "hypercosm.object.v1.0.0", "hypercosm.world.entity.v0.1.0" });
 	public abstract Task Interact();
 
 	public override async Task HandleMessage(ulong sequence, int commandNumber, Memory<byte> buf, int offset) {
